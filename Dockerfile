@@ -1,6 +1,6 @@
 FROM golang:1.17-alpine as builder
 WORKDIR /go/src/ProblemMicro
-COPY ./ProblemMicro .
+COPY . .
 ENV GO111MODULE=on
 RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o build/problemservice
