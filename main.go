@@ -9,6 +9,7 @@ import (
 	"fmt"
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	"log"
 	"net"
@@ -37,7 +38,12 @@ func main() {
 		log.Panicf("%s: failed to listen on port - %v", MicroName, err)
 	}
 
-	server := grpc.NewServer()
+	creds, err := credentials.NewServerTLSFromFile(configs.CERTIFICATE, configs.KEY_PRIVATE)
+	if err != nil {
+		log.Panicf("%s: can't load TLS keys : %v", MicroName, err)
+	}
+
+	server := grpc.NewServer(grpc.Creds(creds))
 	defer server.GracefulStop()
 	proto.RegisterProblemServiceServer(server, service)
 	reflection.Register(server)

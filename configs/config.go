@@ -4,6 +4,9 @@ import (
 	"os"
 )
 
+var KEY_PRIVATE = "problserv.key"
+var CERTIFICATE = "problserv.crt"
+
 var PG_HOST = os.Getenv("PG_HOST")
 var PG_PORT = os.Getenv("PG_PORT")
 var POSTGRES_DB = os.Getenv("POSTGRES_DB")
