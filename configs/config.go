@@ -4,8 +4,9 @@ import (
 	"os"
 )
 
-var KEY_PRIVATE = "problserv.key"
-var CERTIFICATE = "problserv.crt"
+var CERT_PATH = os.Getenv("CERT_PATH")
+var KEY_PRIVATE = CERT_PATH + "problserv.key"
+var CERTIFICATE = CERT_PATH + os.Getenv("PROBLEMS_CERT_NAME")
 
 var PG_HOST = os.Getenv("PG_HOST")
 var PG_PORT = os.Getenv("PG_PORT")
