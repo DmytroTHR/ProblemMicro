@@ -1,4 +1,7 @@
 //go:generate protoc -I=./proto --go_out=./proto ./proto/problem.proto --go-grpc_out=./proto ./proto/problem.proto
+//go:generate openssl req -new -x509 -sha256 -key problserv.key -out problserv.crt -days 3650 -subj "/CN=problemservice" -addext "subjectAltName = DNS:problemservice"
+//go:generate openssl req -new -x509 -sha256 -key problserv.key -out probllocal.crt -days 3650 -subj "/CN=localhost" -addext "subjectAltName = DNS:localhost"
+
 package main
 
 import (
