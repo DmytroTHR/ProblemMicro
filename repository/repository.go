@@ -47,7 +47,7 @@ func (repo *ProblemRepo) Create(ctx context.Context, problem *proto.Problem) (*p
 	return problem, err
 }
 
-func (repo *ProblemRepo) ReadByID(ctx context.Context, id int64) (*proto.Problem, error) {
+func (repo *ProblemRepo) ReadByID(ctx context.Context, request *proto.ProblemRequest, isAdmin bool) (*proto.Problem, error) {
 	query := `SELECT 
 		probls.id, 
       	probls.user_id, 
@@ -59,8 +59,16 @@ func (repo *ProblemRepo) ReadByID(ctx context.Context, id int64) (*proto.Problem
 		FROM problems as probls 
 		    LEFT JOIN problem_types as types 
 		        ON probls.type_Id = types.id
-		WHERE probls.id = $1;`
-	row := repo.db.QueryRowContext(ctx, query, id)
+		WHERE probls.id = $1`
+	var queryParams []interface{}
+	queryParams = append(queryParams, request.Id)
+	if !isAdmin {
+		query += ` AND probls.user_id = $2`
+		queryParams = append(queryParams, request.UserId)
+	}
+	query += `;`
+
+	row := repo.db.QueryRowContext(ctx, query, queryParams...)
 	var problem proto.Problem
 	var problemType proto.ProblemType
 	var currDate time.Time
@@ -117,25 +125,60 @@ func (repo *ProblemRepo) readWithCondition(ctx context.Context, condition string
 	return result, err
 }
 
-func (repo *ProblemRepo) ReadAll(ctx context.Context) ([]*proto.Problem, error) {
-	return repo.readWithCondition(ctx, ``)
+func (repo *ProblemRepo) ReadAll(ctx context.Context, request *proto.ProblemRequest, isAdmin bool) ([]*proto.Problem, error) {
+	var condition string
+	var queryParams []interface{}
+	if !isAdmin {
+		condition = `WHERE probls.user_id = $1`
+		queryParams = append(queryParams, request.UserId)
+	}
+
+	return repo.readWithCondition(ctx, condition, queryParams...)
 }
 
-func (repo *ProblemRepo) ReadByTypeID(ctx context.Context, typeID int32) ([]*proto.Problem, error) {
-	return repo.readWithCondition(ctx, `WHERE probls.type_Id = $1`, typeID)
+func (repo *ProblemRepo) ReadByTypeID(ctx context.Context, request *proto.ProblemRequest, isAdmin bool) ([]*proto.Problem, error) {
+	condition := `WHERE probls.type_Id = $1`
+	var queryParams []interface{}
+	queryParams = append(queryParams, request.TypeId)
+	if !isAdmin {
+		condition += ` AND probls.user_id = $2`
+		queryParams = append(queryParams, request.UserId)
+	}
+
+	return repo.readWithCondition(ctx, condition, queryParams...)
 }
 
-func (repo *ProblemRepo) ReadByUserID(ctx context.Context, userID int64) ([]*proto.Problem, error) {
-	return repo.readWithCondition(ctx, `WHERE probls.user_id = $1`, userID)
+func (repo *ProblemRepo) ReadByUserID(ctx context.Context, request *proto.ProblemRequest) ([]*proto.Problem, error) {
+	condition := `WHERE probls.user_id = $1`
+	var queryParams []interface{}
+	queryParams = append(queryParams, request.UserId)
+
+	return repo.readWithCondition(ctx, condition, queryParams...)
 }
 
-func (repo *ProblemRepo) ReadBySolved(ctx context.Context, isSolved bool) ([]*proto.Problem, error) {
-	return repo.readWithCondition(ctx, `WHERE probls.is_solved = $1`, isSolved)
+func (repo *ProblemRepo) ReadBySolved(ctx context.Context, request *proto.ProblemRequest, isAdmin bool) ([]*proto.Problem, error) {
+	condition := `WHERE probls.is_solved = $1`
+	var queryParams []interface{}
+	queryParams = append(queryParams, request.IsSolved)
+	if !isAdmin {
+		condition += ` AND probls.user_id = $2`
+		queryParams = append(queryParams, request.UserId)
+	}
+
+	return repo.readWithCondition(ctx, condition, queryParams...)
 }
 
-func (repo *ProblemRepo) ReadByTimePeriod(ctx context.Context, start, end *proto.DateTime) ([]*proto.Problem, error) {
-	return repo.readWithCondition(ctx, `WHERE probls.date_reported >= $1 AND probls.date_reported <= $2`,
-		time.Unix(start.Seconds, 0), time.Unix(end.Seconds, 0))
+func (repo *ProblemRepo) ReadByTimePeriod(ctx context.Context, request *proto.ProblemRequest, isAdmin bool) ([]*proto.Problem, error) {
+	condition := `WHERE probls.date_reported >= $1 AND probls.date_reported <= $2`
+	var queryParams []interface{}
+	queryParams = append(queryParams, time.Unix(request.StartTime.Seconds, 0))
+	queryParams = append(queryParams, time.Unix(request.EndTime.Seconds, 0))
+	if !isAdmin {
+		condition += ` AND probls.user_id = $3`
+		queryParams = append(queryParams, request.UserId)
+	}
+
+	return repo.readWithCondition(ctx, condition, queryParams...)
 }
 
 func (repo *ProblemRepo) Update(ctx context.Context, problem *proto.Problem) (*proto.Problem, error) {
@@ -209,13 +252,27 @@ func (repo *ProblemRepo) CreateSolution(ctx context.Context, problem *proto.Prob
 	return solution, err
 }
 
-func (repo *ProblemRepo) ReadSolution(ctx context.Context, problem *proto.Problem) (*proto.Solution, error) {
+func (repo *ProblemRepo) ReadSolution(ctx context.Context, problem *proto.Problem, isAdmin bool) (*proto.Solution, error) {
 	query := `SELECT 
 		description, 
       	date_solved
 		FROM solutions 
 		WHERE problem_id = $1;`
-	row := repo.db.QueryRowContext(ctx, query, problem.Id)
+	var queryParams []interface{}
+	queryParams = append(queryParams, problem.Id)
+	if !isAdmin {
+		query = `SELECT
+			sol.description,
+			sol.date_solved
+		FROM solutions AS sol 
+		INNER JOIN problems AS probl 
+			ON sol.problem_id = probl.id
+		WHERE sol.problem_id = $1 
+			AND probl.user_id = $2;`
+		queryParams = append(queryParams, problem.UserId)
+	}
+
+	row := repo.db.QueryRowContext(ctx, query, queryParams...)
 	var solution proto.Solution
 	var currDate time.Time
 	err := row.Scan(&solution.Description, &currDate)

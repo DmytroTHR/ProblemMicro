@@ -7,6 +7,7 @@ package main
 import (
 	"ProblemMicro/configs"
 	"ProblemMicro/proto"
+	protoUser "ProblemMicro/proto/user"
 	"ProblemMicro/service"
 	"database/sql"
 	"fmt"
@@ -19,6 +20,17 @@ import (
 )
 
 const MicroName = "problem_service"
+
+var UserService protoUser.UserServiceClient
+
+func getUserService() *grpc.ClientConn {
+	userGRPCServer := net.JoinHostPort(configs.USER_SERVICE, configs.USERS_GRPC_PORT)
+	userConnection, err := grpc.Dial(userGRPCServer, grpc.WithInsecure())
+	if err != nil {
+		log.Panicf("%s: unable to set grpc connection - %v", userGRPCServer, err)
+	}
+	return userConnection
+}
 
 func main() {
 	connectionDB := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
@@ -34,6 +46,10 @@ func main() {
 	}
 	defer db.Close()
 
+	userConnection := getUserService()
+	defer userConnection.Close()
+	UserService = protoUser.NewUserServiceClient(userConnection)
+
 	service := service.NewProblemService(db)
 
 	listener, err := net.Listen("tcp", net.JoinHostPort("", configs.GRPC_PORT))
@@ -46,7 +62,7 @@ func main() {
 		log.Panicf("%s: can't load TLS keys : %v", MicroName, err)
 	}
 
-	server := grpc.NewServer(grpc.Creds(creds))
+	server := grpc.NewServer(grpc.Creds(creds), grpc.UnaryInterceptor(serverInterceptor))
 	defer server.GracefulStop()
 	proto.RegisterProblemServiceServer(server, service)
 	reflection.Register(server)
