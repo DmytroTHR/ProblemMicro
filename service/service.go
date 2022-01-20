@@ -74,6 +74,9 @@ func (serv *ProblemService) AddNewProblem(ctx context.Context, problem *proto.Pr
 
 func (serv *ProblemService) UpdateProblem(ctx context.Context, problem *proto.Problem) (*proto.Response, error) {
 	if isAdmin, err := serv.userIsAdmin(ctx); err != nil || !isAdmin {
+		if err == nil{
+			err = status.Errorf(codes.PermissionDenied, "only admin can do this")
+		}
 		return &proto.Response{Success: false}, err
 	}
 
@@ -86,6 +89,9 @@ func (serv *ProblemService) UpdateProblem(ctx context.Context, problem *proto.Pr
 
 func (serv *ProblemService) DeleteProblem(ctx context.Context, problem *proto.Problem) (*proto.Response, error) {
 	if isAdmin, err := serv.userIsAdmin(ctx); err != nil || !isAdmin {
+		if err == nil{
+			err = status.Errorf(codes.PermissionDenied, "only admin can do this")
+		}
 		return &proto.Response{Success: false}, err
 	}
 
@@ -205,6 +211,9 @@ func (serv *ProblemService) GetAllProblemTypes(ctx context.Context, request *pro
 func (serv *ProblemService) AddProblemSolution(ctx context.Context, request *proto.ProblemSolution) (*proto.Response, error) {
 	isAdmin, err := serv.userIsAdmin(ctx)
 	if err != nil || !isAdmin {
+		if err == nil{
+			err = status.Errorf(codes.PermissionDenied, "only admin can do this")
+		}
 		return &proto.Response{Success: false}, err
 	}
 
@@ -240,6 +249,9 @@ func (serv *ProblemService) GetSolutionByProblem(ctx context.Context, request *p
 	request.UserId = userID
 
 	solutionFound, err := serv.Repo.ReadSolution(ctx, request, isAdmin)
+	if err == sql.ErrNoRows {
+		err = status.Errorf(codes.PermissionDenied, "no result found")
+	}
 	return &proto.Response{
 		Success:  err == nil,
 		Solution: solutionFound,
