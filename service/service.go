@@ -27,7 +27,7 @@ func (serv *ProblemService) userID(ctx context.Context) (int64, error) {
 	if !ok {
 		return 0, status.Errorf(codes.InvalidArgument, "No metadata retreived")
 	}
-	userIDs, ok := meta["userID"]
+	userIDs, ok := meta["userid"]
 	if !ok {
 		return 0, status.Errorf(codes.Unauthenticated, "No user ID found in query context")
 	}
@@ -45,7 +45,7 @@ func (serv *ProblemService) userIsAdmin(ctx context.Context) (bool, error) {
 	if !ok {
 		return false, status.Errorf(codes.InvalidArgument, "No metadata retreived")
 	}
-	isAdmins, ok := meta["isAdmin"]
+	isAdmins, ok := meta["isadmin"]
 	if !ok {
 		return false, status.Errorf(codes.PermissionDenied, "No isAdmin value found in query context")
 	}

@@ -18,8 +18,8 @@ func serverInterceptor(ctx context.Context,
 	isAdmin := checkIfAdmin(ctx) == nil
 	userID := getUserID(ctx)
 
-	md := metadata.Pairs("isAdmin", strconv.FormatBool(isAdmin), "userID", strconv.FormatInt(userID, 10))
-	ctx = metadata.NewOutgoingContext(ctx, md)
+	md := metadata.Pairs("isadmin", strconv.FormatBool(isAdmin), "userid", strconv.FormatInt(userID, 10))
+	ctx = metadata.NewIncomingContext(ctx, md)
 
 	return handler(ctx, req)
 }
